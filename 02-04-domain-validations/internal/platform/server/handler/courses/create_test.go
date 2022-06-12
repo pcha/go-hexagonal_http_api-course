@@ -3,6 +3,7 @@ package courses
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,24 +24,83 @@ func TestHandler_Create(t *testing.T) {
 	r.POST("/courses", CreateHandler(courseRepository))
 
 	t.Run("given an invalid request it returns 400", func(t *testing.T) {
-		createCourseReq := createRequest{
-			Name:     "Demo Course",
-			Duration: "10 months",
+		type testCase struct {
+			createCourseReq createRequest
+			expectedMessage string
 		}
 
-		b, err := json.Marshal(createCourseReq)
-		require.NoError(t, err)
+		cases := map[string]testCase{
+			"No ID": {
+				createCourseReq: createRequest{
+					Name:     "Demo Curse",
+					Duration: "10 months",
+				},
+				expectedMessage: emptyIDMsg,
+			},
+			"No UIID ID": {
+				createCourseReq: createRequest{
+					ID:       "123",
+					Name:     "Demo Course",
+					Duration: "10 months",
+				},
+				expectedMessage: invalidIDMsg,
+			},
+			"No Name": {
+				createCourseReq: createRequest{
+					ID:       "adb77d46-ffe7-44a8-8520-49eca6dc2ed8",
+					Duration: "10 months",
+				},
+				expectedMessage: emptyNameMsg,
+			},
+			"Too short Name": {
+				createCourseReq: createRequest{
+					ID:       "adb77d46-ffe7-44a8-8520-49eca6dc2ed8",
+					Name:     "asdf",
+					Duration: "10 months",
+				},
+				expectedMessage: tooShortNameMsg,
+			},
+			"No Duration": {
+				createCourseReq: createRequest{
+					ID:   "adb77d46-ffe7-44a8-8520-49eca6dc2ed8",
+					Name: "Demo Course",
+				},
+				expectedMessage: emptyDurationMsg,
+			},
+			"Invalid Duration": {
+				createCourseReq: createRequest{
+					ID:       "adb77d46-ffe7-44a8-8520-49eca6dc2ed8",
+					Name:     "Demo Course",
+					Duration: "12",
+				},
+				expectedMessage: invalidDurationMsg,
+			},
+		}
 
-		req, err := http.NewRequest(http.MethodPost, "/courses", bytes.NewBuffer(b))
-		require.NoError(t, err)
+		for name, tc := range cases {
+			t.Run(name, func(t *testing.T) {
+				b, err := json.Marshal(tc.createCourseReq)
+				require.NoError(t, err)
 
-		rec := httptest.NewRecorder()
-		r.ServeHTTP(rec, req)
+				req, err := http.NewRequest(http.MethodPost, "/courses", bytes.NewBuffer(b))
+				require.NoError(t, err)
 
-		res := rec.Result()
-		defer res.Body.Close()
+				rec := httptest.NewRecorder()
+				r.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+				res := rec.Result()
+				defer res.Body.Close()
+
+				body, err := io.ReadAll(res.Body)
+				require.NoError(t, err)
+				errResp := errorResponse{}
+				err = json.Unmarshal(body, &errResp)
+				require.NoError(t, err)
+
+				assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+				assert.Equal(t, tc.expectedMessage, errResp.Error)
+			})
+		}
 	})
 
 	t.Run("given a valid request it returns 201", func(t *testing.T) {

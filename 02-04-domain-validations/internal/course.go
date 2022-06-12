@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/google/uuid"
+	"regexp"
 )
 
 var ErrInvalidCourseID = errors.New("invalid Course ID")
@@ -33,6 +33,7 @@ func (id CourseID) String() string {
 }
 
 var ErrEmptyCourseName = errors.New("the field Course Name can not be empty")
+var ErrTooShortCourseName = errors.New("the field Course Name must have at least 5 characters")
 
 // CourseName represents the course name.
 type CourseName struct {
@@ -43,6 +44,10 @@ type CourseName struct {
 func NewCourseName(value string) (CourseName, error) {
 	if value == "" {
 		return CourseName{}, ErrEmptyCourseName
+	}
+
+	if len(value) < 5 {
+		return CourseName{}, ErrTooShortCourseName
 	}
 
 	return CourseName{
@@ -56,6 +61,7 @@ func (name CourseName) String() string {
 }
 
 var ErrEmptyDuration = errors.New("the field Duration can not be empty")
+var ErrInvalidFormatDuration = errors.New("the field duration must be expressed in integers years, months or weeks")
 
 // CourseDuration represents the course duration.
 type CourseDuration struct {
@@ -67,12 +73,18 @@ func NewCourseDuration(value string) (CourseDuration, error) {
 		return CourseDuration{}, ErrEmptyDuration
 	}
 
+	r := regexp.MustCompile("^(\\d+ years?)?\\s?(\\d+ months?)?\\s?(\\d+ weeks?)?\\s?$")
+	match := r.Match([]byte(value))
+	if !match {
+		return CourseDuration{}, fmt.Errorf("%w, given %v", ErrInvalidFormatDuration, value)
+	}
+
 	return CourseDuration{
 		value: value,
 	}, nil
 }
 
-// String type converts the CourseDuration into string.
+// String type converts the CourseDurationerr.Error() into string.
 func (duration CourseDuration) String() string {
 	return duration.value
 }
