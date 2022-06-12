@@ -37,3 +37,8 @@ func (r *CourseRepository) Save(ctx context.Context, course mooc.Course) error {
 
 	return nil
 }
+
+func (r *CourseRepository) List(ctx context.Context) ([]mooc.Course, error) {
+	//TODO implement me
+	panic("implement me")
+}

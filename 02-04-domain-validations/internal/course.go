@@ -92,6 +92,7 @@ func (duration CourseDuration) String() string {
 // CourseRepository defines the expected behaviour from a course storage.
 type CourseRepository interface {
 	Save(ctx context.Context, course Course) error
+	List(ctx context.Context) ([]Course, error)
 }
 
 //go:generate mockery --case=snake --outpkg=storagemocks --output=platform/storage/storagemocks --name=CourseRepository
@@ -125,6 +126,10 @@ func NewCourse(id, name, duration string) (Course, error) {
 		name:     nameVO,
 		duration: durationVO,
 	}, nil
+}
+
+func ListCourses(ctx context.Context, repository CourseRepository) ([]Course, error) {
+	return repository.List(ctx)
 }
 
 // ID returns the course unique identifier.
